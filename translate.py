@@ -4,25 +4,20 @@ import json
 import os
 
 import requests
-# from openai import OpenAI
 import tqdm
 
 from config import api_key, proxy, api_base, model_to_use
 
 api_base = api_base.rstrip("/")
 headers = {
-    'Content-Type': 'application/json',
-    'Authorization': f'Bearer {api_key}',
+    "Content-Type": "application/json",
+    "Authorization": f"Bearer {api_key}",
 }
 if proxy:
-    proxies = {
-        'http': proxy,
-        'https': proxy
-    }
+    proxies = {"http": proxy, "https": proxy}
 else:
     proxies = {}
 
-# client = OpenAI(api_key=api_key, base_url=api_base)
 
 def load_srt(fp):
     with open(fp, "r", encoding="utf-8") as f:
@@ -34,7 +29,8 @@ def load_srt(fp):
             result.append(ln)
     return result
 
-def make_dict(subs : list):
+
+def make_dict(subs: list):
     srt = {}
     for sub in subs:
         if not sub:
@@ -43,12 +39,11 @@ def make_dict(subs : list):
         idx = composition[0]
         idx = idx.lstrip("\ufeff")
         srt[idx] = [composition[1], "\n".join(composition[2:])]
-    
+
     return srt
 
+
 def make_cover_feed_list(subs: list, items_per_time: int, cover: int):
-    # items_per_time = 15
-    # cover = 0
     feed = []
     current = []
     index = 0
@@ -62,24 +57,18 @@ def make_cover_feed_list(subs: list, items_per_time: int, cover: int):
             index -= cover
     if len(current) > 0:
         feed.append(current)
-    
-    # result = []
+
     result_dict = []
-    for each in feed: # 每个each包含items_per_time个字幕
-        # each = ["{}\n{}\n".format(c.split("\n")[0], "\n".join(c.split("\n")[2:])) for c in each] # 去除srt中的时间数据
+    for each in feed:  # 每个each包含items_per_time个字幕
         tmp_d = {}
         for c in each:
             tmp_d[c.split("\n")[0]] = "\n".join(c.split("\n")[2:])
         result_dict.append(tmp_d)
 
-        # each = ["{}\n{}\n".format(c.split("\n")[0], "\n".join(c.split("\n")[2:])) for c in each] # 去除srt中的时间数据
-        # result.append("".join(each).strip("\n"))
-
     return result_dict
 
+
 def is_translation_valid(text, t_text):
-    # origin_count = 0
-    # processed_count = 0
     try:
         trans = eval(t_text)
         orign = eval(text)
@@ -94,9 +83,12 @@ def is_translation_valid(text, t_text):
         print(f"{len(orign)=}, {len(trans)=}")
         return True
 
+
 prompt_tokens = 0
 completion_tokens = 0
 total_tokens = 0
+
+
 # 从 https://github.com/jesselau76/srt-gpt-translator/blob/main/srt_translation.py 借鉴来的
 def translate_text(text: str) -> str:
     global prompt_tokens
@@ -109,46 +101,44 @@ def translate_text(text: str) -> str:
         try:
             max_tokens = 2000 if "qwen" in model_to_use else 3000
             data = {
-                'model': model_to_use,
-                "response_format": { "type": "json_object" },
-                'messages': [
+                "model": model_to_use,
+                "response_format": {"type": "json_object"},
+                "messages": [
                     {
-                        'role': 'system',
-                        'content': SYSTEM_MSG,
+                        "role": "system",
+                        "content": SYSTEM_MSG,
                     },
                     {
-                        'role': 'user',
-                        'content': text,
+                        "role": "user",
+                        "content": text,
                     },
                 ],
-                'max_tokens': max_tokens,
+                "max_tokens": max_tokens,
                 # 'temperature': 0.5,
             }
             completion = {}
             response = requests.post(
-                f'{api_base}/chat/completions', 
-                headers=headers, 
+                f"{api_base}/chat/completions",
+                headers=headers,
                 data=json.dumps(data),
-                proxies=proxies
+                proxies=proxies,
             )
             completion = response.json()
             assert response.status_code == 200
-            t_text = (
-                completion['choices'][0]['message']['content']
-            )
+            t_text = completion["choices"][0]["message"]["content"]
 
-            prompt_tokens += completion['usage']['prompt_tokens']
-            completion_tokens += completion['usage']['completion_tokens']
-            total_tokens += completion['usage']['total_tokens']
+            prompt_tokens += completion["usage"]["prompt_tokens"]
+            completion_tokens += completion["usage"]["completion_tokens"]
+            total_tokens += completion["usage"]["total_tokens"]
 
             # 去除GPT4o可能擅自添加的“```”以显示json格式
             if t_text.startswith("```"):
-                print("Fixing \"```\".")
+                print('Fixing "```".')
                 t_text = t_text[3:-3]
             if t_text.startswith("json\n"):
-                print("Fixing \"json\\n\".")
+                print('Fixing "json\\n".')
                 t_text = t_text[5:-1]
-            
+
             if is_translation_valid(text, t_text):
                 return t_text
             else:
@@ -158,17 +148,23 @@ def translate_text(text: str) -> str:
                 print(t_text)
                 print(f"Invalid translation format. Retrying ({retries}/{max_retries})")
                 time.sleep(3)
-        
+
         except Exception as e:
             sleep_time = 10
             print()
             print(completion)
-            print(e, f"will sleep {sleep_time} seconds, Retrying ({retries}/{max_retries})")
+            print(
+                e,
+                f"will sleep {sleep_time} seconds, Retrying ({retries}/{max_retries})",
+            )
             time.sleep(sleep_time)
             retries += 1
 
-    print(f"Unable to get a valid translation after {max_retries} retries. Returning the original text.")
+    print(
+        f"Unable to get a valid translation after {max_retries} retries. Returning the original text."
+    )
     return text
+
 
 def isnum(text):
     if not isinstance(text, str):
@@ -179,8 +175,13 @@ def isnum(text):
     except ValueError:
         return False
 
-def translate_srt(feed: list, original_srt: dict, 
-                  max_requests_per_minute: int=3, debug: bool=False):
+
+def translate_srt(
+    feed: list,
+    original_srt: dict,
+    max_requests_per_minute: int = 3,
+    debug: bool = False,
+):
     comp_dict = {}
     text_only = {}
 
@@ -190,7 +191,9 @@ def translate_srt(feed: list, original_srt: dict,
             tokens, raw_output = json.loads(f.read())
         global prompt_tokens, completion_tokens, total_tokens
         prompt_tokens, completion_tokens, total_tokens = tokens
-        print(f"Loading historic tokens: {prompt_tokens=}, {completion_tokens=}, {total_tokens=}")
+        print(
+            f"Loading historic tokens: {prompt_tokens=}, {completion_tokens=}, {total_tokens=}"
+        )
     else:
         raw_output = []
 
@@ -207,25 +210,34 @@ def translate_srt(feed: list, original_srt: dict,
             translated = eval(translated)
             raw_output.append(translated)
             with open(temp_fp, "w", encoding="utf-8") as f:
-                f.write(json.dumps([[prompt_tokens, completion_tokens, total_tokens], raw_output]))
+                f.write(
+                    json.dumps(
+                        [[prompt_tokens, completion_tokens, total_tokens], raw_output]
+                    )
+                )
 
         for k, v in translated.items():
             try:
                 if k in comp_dict:
                     continue
-                comp_dict[k] = [original_srt[k][0], v.replace("，", " ").replace("。", " ").strip()]
+                comp_dict[k] = [
+                    original_srt[k][0],
+                    v.replace("，", " ").replace("。", " ").strip(),
+                ]
                 text_only[k] = v
             except KeyError:
                 print(f"Key error: {k=}, {v=}.")
                 continue
-        
+
         end = time.time()
         period = end - start
-        
+
         control_time = 60 / max_requests_per_minute
         if period < control_time:
             print("\nSending request faster than the limitation, limiting speed. . .")
-            print(f"We will sleep {control_time - period} * 1.1 = {(control_time - period)*1.1}s.")
+            print(
+                f"We will sleep {control_time - period} * 1.1 = {(control_time - period)*1.1}s."
+            )
             time.sleep((control_time - period * 1.1))
 
     if os.path.exists(temp_fp):
@@ -233,10 +245,10 @@ def translate_srt(feed: list, original_srt: dict,
             os.remove(temp_fp)
         except Exception as e:
             print(f"Unable to delete {temp_fp}: {e}")
-    
+
     srt_result = []
     comp_list = list(comp_dict.items())
-    comp_list.sort(key=lambda x: int(x[0])) # 防止序号在前的出现在后
+    comp_list.sort(key=lambda x: int(x[0]))  # 防止序号在前的出现在后
     for k, v in comp_list:
         ln = "\n".join([k] + v)
         srt_result.append(ln)
@@ -247,6 +259,7 @@ def translate_srt(feed: list, original_srt: dict,
     text_only = "\n".join([x[1] for x in text_only])
 
     return srt_result, text_only
+
 
 def count_total_feed(feed, do_print=True):
     count = 0
@@ -266,18 +279,20 @@ def count_total_feed(feed, do_print=True):
 
     return original_count, count
 
+
+items_per_time = 40
+cover = 5
+
+
 def main():
-    
-    items_per_time = 40
-    cover = 5
 
     subs = load_srt(ORIGINAL_SRT)
     origin = make_dict(subs)
-    feed_dict  = make_cover_feed_list(subs, items_per_time, cover)
+    feed_dict = make_cover_feed_list(subs, items_per_time, cover)
     count_total_feed(feed_dict)
     input("Press enter to continue. . .")
     translated_srt, translated_txt = translate_srt(feed_dict, origin, 1000)
-    
+
     print(f"Usage: {prompt_tokens=}, {completion_tokens=}, {total_tokens=}")
 
     with open(f"{output_filename}.srt", "w", encoding="utf-8") as f:
@@ -285,17 +300,15 @@ def main():
     with open(f"{output_filename}.txt", "w", encoding="utf-8") as f:
         f.write(translated_txt)
 
-ORIGINAL_SRT = input("Input the srt path: ")
-ORIGINAL_SRT = ORIGINAL_SRT.strip("\"")
-assert ORIGINAL_SRT.lower().endswith(".srt")
+
+ORIGINAL_SRT = r"F:\pyproj\translate\20240720RM_Transit\[eng_ca] The Portland MAX is slow. This is how to fix it. [DownSub.com].srt"
 model_name = model_to_use.split("/")[-1]
 base_filename = os.path.splitext(ORIGINAL_SRT)[0]
 output_filename = f"{base_filename}_{model_name}"
 
-SYSTEM_MSG = \
-"""你是一个专业的字幕翻译，请将用JSON格式给出的外语字幕翻译为中文，并且也用JSON字典格式回复。"""
+SYSTEM_MSG = """你是一个专业的字幕翻译，请将用JSON格式给出的外语字幕翻译为中文，并且也用JSON字典格式回复。"""
 # 注意，这个字幕是自动生成的，所以可能会有错误。其中涉及的关键词有“DirtyTesla, FSD, supervised, JOWUA, Tesla”"""
 
 if __name__ == "__main__":
-    
+
     main()
