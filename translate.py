@@ -3,6 +3,7 @@ from srt_fp import *
 import time
 import json
 import os
+import re
 
 import requests
 import tqdm
@@ -92,15 +93,21 @@ f"""先前的几条字幕：{prev}
 
 
 def is_translation_valid(text, t_text):
+    pattern = r'\{.*?\}'
+    matches = re.findall(pattern, text)
+    in_dict = json.loads(matches[1])
     try:
-        trans = eval(t_text)
+        trans = json.loads(t_text)
+        assert len(trans) == len(in_dict)
+        for val in trans.values():
+            assert val
         # orign = eval(text)
         assert isinstance(trans, dict)
-    except SyntaxError:
+    except json.JSONDecodeError:
         print(f"Error: unable to eval the output of AI: {t_text}")
         return False
-    except AssertionError:
-        print(f"Error: Not a list! {type(trans)=}")
+    except AssertionError as e:
+        print(f"Error: {e} {type(trans)=}")
         return False
     else:
         print(f"\n{len(trans)=}")
@@ -231,7 +238,7 @@ def translate_srt(
         else:
             # translated = translate_text(json.dumps(each, ensure_ascii=False))
             translated = translate_text(each)
-            translated = eval(translated)
+            translated = json.loads(translated)
             raw_output.append(translated)
             with open(temp_fp, "w", encoding="utf-8") as f:
                 f.write(
