@@ -1,4 +1,5 @@
 from pprint import pprint
+from srt_fp import *
 import time
 import json
 import os
@@ -44,34 +45,56 @@ def make_dict(subs: list):
 
 
 def make_cover_feed_list(subs: list, items_per_time: int, cover: int):
+    # feed = []
+    # current = []
+    # index = 0
+    # while index < len(subs):
+    #     if len(current) < items_per_time:
+    #         breakpoint()
+    #         current.append(subs[index])
+    #         index += 1
+    #     else:
+    #         feed.append(current)
+    #         current = []
+    #         index -= cover
+    # if len(current) > 0:
+    #     feed.append(current)
     feed = []
-    current = []
-    index = 0
-    while index < len(subs):
-        if len(current) < items_per_time:
-            current.append(subs[index])
-            index += 1
-        else:
-            feed.append(current)
-            current = []
-            index -= cover
-    if len(current) > 0:
-        feed.append(current)
+    length = len(subs)
 
-    result_dict = []
-    for each in feed:  # 每个each包含items_per_time个字幕
-        tmp_d = {}
-        for c in each:
-            tmp_d[c.split("\n")[0]] = "\n".join(c.split("\n")[2:])
-        result_dict.append(tmp_d)
+    for i in range(0, length, items_per_time):
+        prev_list = subs[max(0, i - cover) : i]
+        curr_list = subs[i : i + items_per_time]
+        next_list = subs[i + items_per_time : i + items_per_time + cover]
+        feed.append([prev_list, curr_list, next_list])
 
-    return result_dict
+    result_dicts = []
+    for node in feed:
+        lst = []
+        for each in node:  # 每个each包含items_per_time个字幕
+            tmp_d = {}
+            for c in each:
+                tmp_d[c.split("\n")[0]] = "\n".join(c.split("\n")[2:])
+            lst.append(tmp_d)
+        result_dicts.append(lst)
+
+    result_strs = []
+    for node in result_dicts:
+        prev = json.dumps(node[0], ensure_ascii=False)
+        curr = json.dumps(node[1], ensure_ascii=False)
+        next = json.dumps(node[2], ensure_ascii=False)
+        prompt = \
+f"""先前的几条字幕：{prev}
+需要翻译的字幕：{curr}
+后面的几条字幕：{next}"""
+        result_strs.append(prompt)
+    return result_strs
 
 
 def is_translation_valid(text, t_text):
     try:
         trans = eval(t_text)
-        orign = eval(text)
+        # orign = eval(text)
         assert isinstance(trans, dict)
     except SyntaxError:
         print(f"Error: unable to eval the output of AI: {t_text}")
@@ -80,7 +103,7 @@ def is_translation_valid(text, t_text):
         print(f"Error: Not a list! {type(trans)=}")
         return False
     else:
-        print(f"{len(orign)=}, {len(trans)=}")
+        print(f"\n{len(trans)=}")
         return True
 
 
@@ -206,13 +229,15 @@ def translate_srt(
         elif debug:
             translated = each
         else:
-            translated = translate_text(json.dumps(each))
+            # translated = translate_text(json.dumps(each, ensure_ascii=False))
+            translated = translate_text(each)
             translated = eval(translated)
             raw_output.append(translated)
             with open(temp_fp, "w", encoding="utf-8") as f:
                 f.write(
                     json.dumps(
-                        [[prompt_tokens, completion_tokens, total_tokens], raw_output]
+                        [[prompt_tokens, completion_tokens, total_tokens], raw_output],
+                        ensure_ascii=False,
                     )
                 )
 
@@ -261,26 +286,26 @@ def translate_srt(
     return srt_result, text_only
 
 
-def count_total_feed(feed, do_print=True):
-    count = 0
-    original = set()
-    for each in feed:
-        ln_count = 0
-        for k in each.keys():
-            ln_count += 1
-            original.add(k)
-        count += ln_count
-    original_count = len(original)
-    if do_print:
-        print(f"Sections: {len(feed)}")
-        print(f"Original items:\t{original_count}")
-        print(f"Feed items:\t{count}")
-        print(f"{(count / original_count - 1) * 100} % increase")
+# def count_total_feed(feed, do_print=True):
+#     count = 0
+#     original = set()
+#     for each in feed:
+#         ln_count = 0
+#         for k in each.keys():
+#             ln_count += 1
+#             original.add(k)
+#         count += ln_count
+#     original_count = len(original)
+#     if do_print:
+#         print(f"Sections: {len(feed)}")
+#         print(f"Original items:\t{original_count}")
+#         print(f"Feed items:\t{count}")
+#         print(f"{(count / original_count - 1) * 100} % increase")
 
-    return original_count, count
+#     return original_count, count
 
 
-items_per_time = 40
+items_per_time = 5
 cover = 5
 
 
@@ -289,10 +314,8 @@ def main():
     subs = load_srt(ORIGINAL_SRT)
     origin = make_dict(subs)
     feed_dict = make_cover_feed_list(subs, items_per_time, cover)
-    count_total_feed(feed_dict)
     input("Press enter to continue. . .")
     translated_srt, translated_txt = translate_srt(feed_dict, origin, 1000)
-
     print(f"Usage: {prompt_tokens=}, {completion_tokens=}, {total_tokens=}")
 
     with open(f"{output_filename}.srt", "w", encoding="utf-8") as f:
@@ -301,12 +324,25 @@ def main():
         f.write(translated_txt)
 
 
-ORIGINAL_SRT = r"F:\pyproj\translate\20240720RM_Transit\[eng_ca] The Portland MAX is slow. This is how to fix it. [DownSub.com].srt"
 model_name = model_to_use.split("/")[-1]
 base_filename = os.path.splitext(ORIGINAL_SRT)[0]
 output_filename = f"{base_filename}_{model_name}"
 
-SYSTEM_MSG = """你是一个专业的字幕翻译，请将用JSON格式给出的外语字幕翻译为中文，并且也用JSON字典格式回复。"""
+origin_lang = "英语"
+target_lang = "中文"
+
+is_auto_generated = True
+keywords = "DirtyTesla, FSD, supervised, JOWUA, Tesla"
+
+SYSTEM_MSG = f"你是一个专业的字幕翻译，请将用JSON格式给出的"\
+    f"{origin_lang}字幕翻译为{target_lang}，并且也用JSON字典格式回复。"
+if is_auto_generated:
+    SYSTEM_MSG += "注意，这个字幕是自动生成的，所以可能会有错误。"
+if keywords:
+    SYSTEM_MSG += f"其中涉及的关键词有{keywords}。"
+SYSTEM_MSG += "你将收到需要翻译的字幕的先前的几条字幕、需要翻译的几条字幕和需要翻译的之后的几条字幕。"\
+"先前的和之后的几条字幕只是用于补充背景信息，无需翻译。只需要翻译中间给出的需要翻译的几条字幕。"
+# SYSTEM_MSG = """你是一个专业的字幕翻译，请将用JSON格式给出的外语字幕翻译为中文，并且也用JSON字典格式回复。"""
 # 注意，这个字幕是自动生成的，所以可能会有错误。其中涉及的关键词有“DirtyTesla, FSD, supervised, JOWUA, Tesla”"""
 
 if __name__ == "__main__":
