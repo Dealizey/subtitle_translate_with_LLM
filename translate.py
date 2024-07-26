@@ -7,6 +7,7 @@ import requests
 import tqdm
 
 from config import api_key, proxy, api_base, model_to_use
+from srt_fp import ORIGINAL_SRT
 
 api_base = api_base.rstrip("/")
 headers = {
@@ -301,13 +302,22 @@ def main():
         f.write(translated_txt)
 
 
-ORIGINAL_SRT = r"F:\pyproj\translate\20240720RM_Transit\[eng_ca] The Portland MAX is slow. This is how to fix it. [DownSub.com].srt"
 model_name = model_to_use.split("/")[-1]
 base_filename = os.path.splitext(ORIGINAL_SRT)[0]
 output_filename = f"{base_filename}_{model_name}"
 
-SYSTEM_MSG = """你是一个专业的字幕翻译，请将用JSON格式给出的外语字幕翻译为中文，并且也用JSON字典格式回复。"""
-# 注意，这个字幕是自动生成的，所以可能会有错误。其中涉及的关键词有“DirtyTesla, FSD, supervised, JOWUA, Tesla”"""
+origin_lang = "外语"
+target_lang = "中文"
+
+is_auto_generated = False
+keywords = "DirtyTesla, FSD, supervised, JOWUA, Tesla"
+
+SYSTEM_MSG = f"你是一个专业的字幕翻译，请将用JSON格式给出的"\
+    f"{origin_lang}字幕翻译为{target_lang}，并且也用JSON字典格式回复。"
+if is_auto_generated:
+    SYSTEM_MSG += "注意，这个字幕是自动生成的，所以可能会有错误。"
+    if keywords:
+        SYSTEM_MSG += f"其中涉及的关键词有{keywords}。"
 
 if __name__ == "__main__":
 
