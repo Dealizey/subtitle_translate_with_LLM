@@ -280,10 +280,8 @@ def count_total_feed(feed, do_print=True):
 
     return original_count, count
 
-
-items_per_time = 40
+items_per_time = 20
 cover = 5
-
 
 def main():
 
