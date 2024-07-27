@@ -100,7 +100,7 @@ def is_translation_valid(text, t_text):
         trans = json.loads(t_text)
         assert len(trans) == len(in_dict)
         for val in trans.values():
-            assert val
+            assert val, "val is None"
         # orign = eval(text)
         assert isinstance(trans, dict)
     except json.JSONDecodeError:
@@ -123,7 +123,7 @@ def translate_text(text: str) -> str:
     global completion_tokens
     global total_tokens
 
-    max_retries = 5
+    max_retries = 10
     retries = 0
     while retries < max_retries:
         try:
@@ -344,7 +344,8 @@ if is_auto_generated:
         SYSTEM_MSG += f"其中涉及的关键词有{keywords}。"
 SYSTEM_MSG += "你将收到需要翻译的字幕的先前的几条字幕、需要翻译的几条字幕和需要翻译的之后的几条字幕。"\
 f"先前的和之后的{cover}条字幕只是用于补充背景信息，无需翻译。只需要翻译中间给出的需要翻译的{items_per_time}条字幕。"\
-"字典的键对应字幕的唯一序号，请保持条数不变，不要错位。直接输出json，不要输出任何其他内容。"
+"字典的键对应字幕的唯一序号，请保持条数不变，不要错位。直接输出json，不要输出任何其他内容。\
+输出的json字典应该只包含中间需要翻译的几条的翻译。字典值不得出现空字符串。"
 
 # SYSTEM_MSG = """你是一个专业的字幕翻译，请将用JSON格式给出的外语字幕翻译为中文，并且也用JSON字典格式回复。"""
 # 注意，这个字幕是自动生成的，所以可能会有错误。其中涉及的关键词有“DirtyTesla, FSD, supervised, JOWUA, Tesla”"""
