@@ -1,5 +1,4 @@
 from pprint import pprint
-from video_info import ORIGINAL_SRT, is_auto_generated, keywords
 import time
 import json
 import os
@@ -9,6 +8,13 @@ import requests
 import tqdm
 
 from config import api_key, proxy, api_base, model_to_use
+from video_info import (
+    ORIGINAL_SRT,
+    is_auto_generated,
+    keywords,
+    origin_lang,
+    target_lang,
+)
 
 api_base = api_base.rstrip("/")
 headers = {
@@ -332,8 +338,6 @@ model_name = model_to_use.split("/")[-1]
 base_filename = os.path.splitext(ORIGINAL_SRT)[0]
 output_filename = f"{base_filename}_{model_name}"
 
-origin_lang = "外语"
-target_lang = "中文"
 
 SYSTEM_MSG = (
     f"你是一个专业的字幕翻译，请将用JSON格式给出的"
