@@ -7,7 +7,13 @@ import requests
 import tqdm
 
 from config import api_key, proxy, api_base, model_to_use
-from srt_fp import ORIGINAL_SRT
+from video_info import (
+    ORIGINAL_SRT,
+    is_auto_generated,
+    keywords,
+    origin_lang,
+    target_lang,
+)
 
 api_base = api_base.rstrip("/")
 headers = {
@@ -280,8 +286,10 @@ def count_total_feed(feed, do_print=True):
 
     return original_count, count
 
+
 items_per_time = 20
 cover = 5
+
 
 def main():
 
@@ -304,14 +312,10 @@ model_name = model_to_use.split("/")[-1]
 base_filename = os.path.splitext(ORIGINAL_SRT)[0]
 output_filename = f"{base_filename}_{model_name}"
 
-origin_lang = "外语"
-target_lang = "中文"
-
-is_auto_generated = False
-keywords = "DirtyTesla, FSD, supervised, JOWUA, Tesla"
-
-SYSTEM_MSG = f"你是一个专业的字幕翻译，请将用JSON格式给出的"\
+SYSTEM_MSG = (
+    f"你是一个专业的字幕翻译，请将用JSON格式给出的"
     f"{origin_lang}字幕翻译为{target_lang}，并且也用JSON字典格式回复。"
+)
 if is_auto_generated:
     SYSTEM_MSG += "注意，这个字幕是自动生成的，所以可能会有错误。"
     if keywords:
