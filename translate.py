@@ -1,5 +1,5 @@
 from pprint import pprint
-from srt_fp import ORIGINAL_SRT
+from video_info import ORIGINAL_SRT, is_auto_generated, keywords
 import time
 import json
 import os
@@ -84,8 +84,7 @@ def make_cover_feed_list(subs: list, items_per_time: int, cover: int):
         prev = json.dumps(node[0], ensure_ascii=False)
         curr = json.dumps(node[1], ensure_ascii=False)
         next = json.dumps(node[2], ensure_ascii=False)
-        prompt = \
-f"""先前的几条字幕：{prev}
+        prompt = f"""先前的几条字幕：{prev}
 需要翻译的字幕：{curr}
 后面的几条字幕：{next}"""
         result_strs.append(prompt)
@@ -93,7 +92,7 @@ f"""先前的几条字幕：{prev}
 
 
 def is_translation_valid(text, t_text):
-    pattern = r'\{.*?\}'
+    pattern = r"\{.*?\}"
     matches = re.findall(pattern, text)
     in_dict = json.loads(matches[1])
     try:
@@ -113,9 +112,11 @@ def is_translation_valid(text, t_text):
         print(f"\n{len(trans)=}")
         return True
 
+
 prompt_tokens = 0
 completion_tokens = 0
 total_tokens = 0
+
 
 # 从 https://github.com/jesselau76/srt-gpt-translator/blob/main/srt_translation.py 借鉴来的
 def translate_text(text: str) -> str:
@@ -311,6 +312,7 @@ def translate_srt(
 items_per_time = 5
 cover = 5
 
+
 def main():
 
     subs = load_srt(ORIGINAL_SRT)
@@ -333,19 +335,20 @@ output_filename = f"{base_filename}_{model_name}"
 origin_lang = "外语"
 target_lang = "中文"
 
-is_auto_generated = False
-keywords = "DirtyTesla, FSD, supervised, JOWUA, Tesla"
-
-SYSTEM_MSG = f"你是一个专业的字幕翻译，请将用JSON格式给出的"\
+SYSTEM_MSG = (
+    f"你是一个专业的字幕翻译，请将用JSON格式给出的"
     f"{origin_lang}字幕翻译为{target_lang}，并且也用JSON字典格式回复。"
+)
 if is_auto_generated:
     SYSTEM_MSG += "注意，这个字幕是自动生成的，所以可能会有错误。"
     if keywords:
         SYSTEM_MSG += f"其中涉及的关键词有{keywords}。"
-SYSTEM_MSG += "你将收到需要翻译的字幕的先前的几条字幕、需要翻译的几条字幕和需要翻译的之后的几条字幕。"\
-f"先前的和之后的{cover}条字幕只是用于补充背景信息，无需翻译。只需要翻译中间给出的需要翻译的{items_per_time}条字幕。"\
-"字典的键对应字幕的唯一序号，请保持条数不变，不要错位。直接输出json，不要输出任何其他内容。\
+SYSTEM_MSG += (
+    "你将收到需要翻译的字幕的先前的几条字幕、需要翻译的几条字幕和需要翻译的之后的几条字幕。"
+    f"先前的和之后的{cover}条字幕只是用于补充背景信息，无需翻译。只需要翻译中间给出的需要翻译的{items_per_time}条字幕。"
+    "字典的键对应字幕的唯一序号，请保持条数不变，不要错位。直接输出json，不要输出任何其他内容。\
 输出的json字典应该只包含中间需要翻译的几条的翻译。字典值不得出现空字符串。"
+)
 
 # SYSTEM_MSG = """你是一个专业的字幕翻译，请将用JSON格式给出的外语字幕翻译为中文，并且也用JSON字典格式回复。"""
 # 注意，这个字幕是自动生成的，所以可能会有错误。其中涉及的关键词有“DirtyTesla, FSD, supervised, JOWUA, Tesla”"""
