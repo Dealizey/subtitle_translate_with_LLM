@@ -12,4 +12,4 @@ This project uses the OpenAI API or OpenAI-compatible APIs for subtitle translat
 
 Based on our tests, `Claude 3.5 Sonnet` has provided the best results so far.
 
-Tutorial + Model Review: [YouTube Video](https://www.youtube.com/watch?v=uJeiirRhPy8) or [Bilibili Video](https://www.bilibili.com/video/BV1pY8zeSEHq)
+Tutorial + Model Review: [YouTube Video](https://www.youtube.com/watch?v=uJeiirRhPy8) or [Bilibili Video](https://www.bilibili.com/video/BV1pY8zeSEHq). English subtitles are available in the video.
