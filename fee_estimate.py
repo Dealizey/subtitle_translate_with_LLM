@@ -11,21 +11,20 @@ from translate import (
 )
 import tiktoken
 
-Pricing = namedtuple("Pricing", ["in_price", "out_price"])
+Pricing = namedtuple("Pricing", ["in_price", "out_price", "coefficient", "exchange_rate"])
 
 pricing = {
-    "gpt-4o-mini": Pricing(0.150 / 1e6, 0.600 / 1e6),
-    "gpt-4o": Pricing(5.0 / 1e6, 15.0 / 1e6),
-    "gpt-3.5-turbo": Pricing(0.5 / 1e6, 1.5 / 1e6),
-    "claude-3-5-sonnet": Pricing(3.0 / 1e6, 15.0 / 1e6),
-    "claude-3-haiku": Pricing(0.25 / 1e6, 1.25 / 1e6),
-    "claude-3-opus": Pricing(15.0 / 1e6, 75.0 / 1e6),
-    "gemini-1.5-flash-001": Pricing(0.35 / 1e6, 1.05 / 1e6),
-    "gemini-1.5-pro-001": Pricing(3.5 / 1e6, 10.5 / 1e6),
+    "gpt-4o-mini": Pricing(0.150 / 1e6, 0.600 / 1e6, 1.1, 7),
+    "gpt-4o": Pricing(5.0 / 1e6, 15.0 / 1e6, 1.1, 7),
+    "gpt-3.5-turbo": Pricing(0.5 / 1e6, 1.5 / 1e6, 1.1, 7),
+    "claude-3-5-sonnet": Pricing(3.0 / 1e6, 15.0 / 1e6, 1.1, 7),
+    "claude-3-haiku": Pricing(0.25 / 1e6, 1.25 / 1e6, 1.1, 7),
+    "claude-3-opus": Pricing(15.0 / 1e6, 75.0 / 1e6, 1.1, 7),
+    "gemini-1.5-flash-001": Pricing(0.35 / 1e6, 1.05 / 1e6, 1.1, 7),
+    "gemini-1.5-pro-001": Pricing(3.5 / 1e6, 10.5 / 1e6, 1.1, 7),
+    "TA/meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo": Pricing(0.88 / 1e6, 0.88 / 1e6, 1.1, 7),
+    "TA/meta-llama/Meta-Llama-3.1-405B-Instruct-Turbo": Pricing(5. / 1e6, 5. / 1e6, 1.1, 7)
 }
-
-coefficient = 1.1
-exchange_rate = 7
 
 if "gpt" in model_to_use:
     encoder = tiktoken.encoding_for_model(model_to_use)
@@ -50,8 +49,8 @@ def main():
             token_count
             * (model_price.in_price + model_price.out_price)
             # * (model_price.in_price + (1/3) * model_price.out_price)
-            * coefficient
-            * exchange_rate
+            * model_price.coefficient
+            * model_price.exchange_rate
         )
         estimated_tokens = token_count * 2
         # estimated_tokens = token_count * (4 / 3)
@@ -66,8 +65,8 @@ def main():
                 token_count
                 * (model_price.in_price + model_price.out_price)
                 # * (model_price.in_price + (1/3) * model_price.out_price)
-                * coefficient
-                * exchange_rate
+                * model_price.coefficient
+                * model_price.exchange_rate
             )
             estimated_tokens = token_count * 2
             # estimated_tokens = token_count * (4 / 3)

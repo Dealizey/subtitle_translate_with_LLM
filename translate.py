@@ -2,6 +2,7 @@ from pprint import pprint
 import time
 import json
 import os
+import re
 
 import requests
 import tqdm
@@ -25,7 +26,6 @@ if proxy:
 else:
     proxies = {}
 
-
 def load_srt(fp):
     with open(fp, "r", encoding="utf-8") as f:
         content = f.read()
@@ -35,7 +35,6 @@ def load_srt(fp):
             ln = ln.lstrip("\n")
             result.append(ln)
     return result
-
 
 def make_dict(subs: list):
     srt = {}
@@ -48,7 +47,6 @@ def make_dict(subs: list):
         srt[idx] = [composition[1], "\n".join(composition[2:])]
 
     return srt
-
 
 def make_cover_feed_list(subs: list, items_per_time: int, cover: int):
     feed = []
@@ -77,19 +75,32 @@ def make_cover_feed_list(subs: list, items_per_time: int, cover: int):
 
 def is_translation_valid(text, t_text):
     try:
-        trans = eval(t_text)
-        orign = eval(text)
-        assert isinstance(trans, dict)
+        trans = find_last_json_dict(t_text)
+        orign = find_last_json_dict(text)
+        assert isinstance(trans, dict), "Trans is not a dict!"
+        assert trans, "Trans is None!"
     except SyntaxError:
         print(f"Error: unable to eval the output of AI: {t_text}")
         return False
     except AssertionError:
         print(f"Error: Not a list! {type(trans)=}")
         return False
+    except json.decoder.JSONDecodeError:
+        print(f"Error: unable to eval the output of AI: {t_text}")
+        return False
     else:
         print(f"{len(orign)=}, {len(trans)=}")
         return True
 
+def find_last_json_dict(text):
+    # 使用正则表达式匹配所有的JSON字典
+    json_matches = re.findall(r'\{.*?\}', text, re.DOTALL)
+    
+    if json_matches:
+        # 返回最后一个字典并将其转换为Python字典对象
+        return eval(json_matches[-1])
+    else:
+        return None
 
 prompt_tokens = 0
 completion_tokens = 0
@@ -129,6 +140,7 @@ def translate_text(text: str) -> str:
                 headers=headers,
                 data=json.dumps(data),
                 proxies=proxies,
+                timeout=60
             )
             completion = response.json()
             assert response.status_code == 200
@@ -139,12 +151,12 @@ def translate_text(text: str) -> str:
             total_tokens += completion["usage"]["total_tokens"]
 
             # 去除GPT4o可能擅自添加的“```”以显示json格式
-            if t_text.startswith("```"):
-                print('Fixing "```".')
-                t_text = t_text[3:-3]
-            if t_text.startswith("json\n"):
-                print('Fixing "json\\n".')
-                t_text = t_text[5:-1]
+            # if t_text.startswith("```"):
+            #     print('Fixing "```".')
+            #     t_text = t_text[3:-3]
+            # if t_text.startswith("json\n"):
+            #     print('Fixing "json\\n".')
+            #     t_text = t_text[5:-1]
 
             if is_translation_valid(text, t_text):
                 return t_text
@@ -214,7 +226,7 @@ def translate_srt(
             translated = each
         else:
             translated = translate_text(json.dumps(each))
-            translated = eval(translated)
+            translated = find_last_json_dict(translated)
             raw_output.append(translated)
             with open(temp_fp, "w", encoding="utf-8") as f:
                 f.write(
@@ -229,6 +241,7 @@ def translate_srt(
                     continue
                 comp_dict[k] = [
                     original_srt[k][0],
+                    v,
                     v.replace("，", " ").replace("。", " ").strip(),
                 ]
                 text_only[k] = v
@@ -320,7 +333,8 @@ if is_auto_generated:
     SYSTEM_MSG += "注意，这个字幕是自动生成的，所以可能会有错误。"
     if keywords:
         SYSTEM_MSG += f"其中涉及的关键词有{keywords}。"
+SYSTEM_MSG += "注意使用\\转义双引号\"以确保json正确解析，最好使用全角双引号“”。"
 
 if __name__ == "__main__":
-
+    print(SYSTEM_MSG)
     main()
