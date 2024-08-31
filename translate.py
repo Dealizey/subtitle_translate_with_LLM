@@ -240,7 +240,7 @@ def translate_srt(
                     continue
                 comp_dict[k] = [
                     original_srt[k][0],
-                    v,
+                    # v,
                     v.replace("，", " ").replace("。", " ").strip(),
                 ]
                 text_only[k] = v
