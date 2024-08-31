@@ -27,3 +27,13 @@ model_to_use = "gpt-4o-mini"
 # model_to_use = "generalv3.5"
 # 千问Max
 # model_to_use = "qwen-max"
+
+api_base = api_base.rstrip("/")
+headers = {
+    "Content-Type": "application/json",
+    "Authorization": f"Bearer {api_key}",
+}
+if proxy:
+    proxies = {"http": proxy, "https": proxy}
+else:
+    proxies = {}

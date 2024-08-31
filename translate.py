@@ -7,7 +7,7 @@ import re
 import requests
 import tqdm
 
-from config import api_key, proxy, api_base, model_to_use
+from config import headers, proxies, api_base, model_to_use
 from video_info import (
     ORIGINAL_SRT,
     is_auto_generated,
@@ -16,15 +16,15 @@ from video_info import (
     target_lang,
 )
 
-api_base = api_base.rstrip("/")
-headers = {
-    "Content-Type": "application/json",
-    "Authorization": f"Bearer {api_key}",
-}
-if proxy:
-    proxies = {"http": proxy, "https": proxy}
-else:
-    proxies = {}
+# api_base = api_base.rstrip("/")
+# headers = {
+#     "Content-Type": "application/json",
+#     "Authorization": f"Bearer {api_key}",
+# }
+# if proxy:
+#     proxies = {"http": proxy, "https": proxy}
+# else:
+#     proxies = {}
 
 def load_srt(fp):
     with open(fp, "r", encoding="utf-8") as f:
@@ -45,7 +45,6 @@ def make_dict(subs: list):
         idx = composition[0]
         idx = idx.lstrip("\ufeff")
         srt[idx] = [composition[1], "\n".join(composition[2:])]
-
     return srt
 
 def make_cover_feed_list(subs: list, items_per_time: int, cover: int):
@@ -333,7 +332,7 @@ if is_auto_generated:
     SYSTEM_MSG += "注意，这个字幕是自动生成的，所以可能会有错误。"
     if keywords:
         SYSTEM_MSG += f"其中涉及的关键词有{keywords}。"
-SYSTEM_MSG += "注意使用\\转义双引号\"以确保json正确解析，最好使用全角双引号“”。"
+# SYSTEM_MSG += "注意使用\\转义双引号\"以确保json正确解析，最好使用全角双引号“”。"
 
 if __name__ == "__main__":
     print(SYSTEM_MSG)
