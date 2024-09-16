@@ -16,16 +16,6 @@ from video_info import (
     target_lang,
 )
 
-# api_base = api_base.rstrip("/")
-# headers = {
-#     "Content-Type": "application/json",
-#     "Authorization": f"Bearer {api_key}",
-# }
-# if proxy:
-#     proxies = {"http": proxy, "https": proxy}
-# else:
-#     proxies = {}
-
 def load_srt(fp):
     with open(fp, "r", encoding="utf-8") as f:
         content = f.read()
@@ -107,10 +97,13 @@ total_tokens = 0
 
 
 # 从 https://github.com/jesselau76/srt-gpt-translator/blob/main/srt_translation.py 借鉴来的
-def translate_text(text: str) -> str:
+def translate_text(text: str, sys_msg=None, verify_result=True) -> str:
     global prompt_tokens
     global completion_tokens
     global total_tokens
+
+    if sys_msg is None:
+        sys_msg = SYSTEM_MSG
 
     max_retries = 5
     retries = 0
@@ -123,7 +116,7 @@ def translate_text(text: str) -> str:
                 "messages": [
                     {
                         "role": "system",
-                        "content": SYSTEM_MSG,
+                        "content": sys_msg,
                     },
                     {
                         "role": "user",
@@ -149,15 +142,7 @@ def translate_text(text: str) -> str:
             completion_tokens += completion["usage"]["completion_tokens"]
             total_tokens += completion["usage"]["total_tokens"]
 
-            # 去除GPT4o可能擅自添加的“```”以显示json格式
-            # if t_text.startswith("```"):
-            #     print('Fixing "```".')
-            #     t_text = t_text[3:-3]
-            # if t_text.startswith("json\n"):
-            #     print('Fixing "json\\n".')
-            #     t_text = t_text[5:-1]
-
-            if is_translation_valid(text, t_text):
+            if  (not verify_result) or is_translation_valid(text, t_text):
                 return t_text
             else:
                 retries += 1
@@ -332,7 +317,6 @@ if is_auto_generated:
     SYSTEM_MSG += "注意，这个字幕是自动生成的，所以可能会有错误。"
     if keywords:
         SYSTEM_MSG += f"其中涉及的关键词有{keywords}。"
-# SYSTEM_MSG += "注意使用\\转义双引号\"以确保json正确解析，最好使用全角双引号“”。"
 
 if __name__ == "__main__":
     print(SYSTEM_MSG)
