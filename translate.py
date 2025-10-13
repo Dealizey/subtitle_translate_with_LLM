@@ -109,7 +109,7 @@ def translate_text(text: str, sys_msg=None, verify_result=True) -> str:
     retries = 0
     while retries < max_retries:
         try:
-            max_tokens = 2000 if "qwen" in model_to_use else 3000
+            max_tokens = 10000
             data = {
                 "model": model_to_use,
                 "response_format": {"type": "json_object"},
@@ -132,7 +132,7 @@ def translate_text(text: str, sys_msg=None, verify_result=True) -> str:
                 headers=headers,
                 data=json.dumps(data),
                 proxies=proxies,
-                timeout=60
+                # timeout=60
             )
             completion = response.json()
             assert response.status_code == 200
